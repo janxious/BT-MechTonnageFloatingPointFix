@@ -1,59 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Text;
 using BattleTech;
-using BattleTech.Data;
 using Harmony;
-using static MechTonnageFloatingPointFixer.Core;
 
 namespace MechTonnageFloatingPointFixer
 {
     [HarmonyPatch(typeof(MechValidationRules), "ValidateMechTonnage")]
     static class ValidateMechTonnage_Patch
     {
-        static bool Prefix(DataManager dataManager, MechDef mechDef,
-            Dictionary<MechValidationType, List<string>> errorMessages)
+        // drop  a call to Calculator.SameTonnageWithEpsilon and early return early from method if things are same. 
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            var maxTonnage = mechDef.Chassis.Tonnage;
-            var currentTonnage = 0f;
-            var _throwaway = 0f;
-            MechStatisticsRules.CalculateTonnage(mechDef, ref currentTonnage, ref _throwaway);
-            Logger.Debug(
-                $"mech: {mechDef.Name}\n" +
-                $"current: {currentTonnage}\n" +
-                $"max: {maxTonnage}"
-            );
-
-            if (Math.Abs(currentTonnage - maxTonnage) < ModSettings.Epsilon)
-            {
-                Logger.Debug("roughly the same!");
-                return false;
-            }
-
-            if (currentTonnage > maxTonnage)
-            {
-                Logger.Debug("overweight");
-                Traverse.Create(typeof(MechValidationRules)).Method("AddErrorMessage",
-                    new object[]
-                    {
-                        errorMessages,
-                        MechValidationType.Overweight,
-                        string.Format("OVERWEIGHT: 'Mech weight exceeds maximum tonnage for the Chassis", new object[0])
-                    });
-            }
-
-            if (currentTonnage < maxTonnage)
-            {
-                Logger.Debug("underweight");
-                Traverse.Create(typeof(MechValidationRules)).Method("AddErrorMessage",
-                    new object[]
-                    {
-                        errorMessages,
-                        MechValidationType.Underweight,
-                        string.Format("UNDERWEIGHT: 'Mech has unused tonnage", new object[0])
-                    });
-            }
-
-            return false;
+            var instructionList = instructions.ToList();
+            var calculateMethod =
+                AccessTools.Method(typeof(MechStatisticsRules),
+                    "CalculateTonnage"); //, new Type[] {typeof(MechDef), typeof(float), typeof(float)});
+            var insertionIndex = instructionList.FindIndex(instruction =>
+                                     instruction.opcode == OpCodes.Call && instruction.operand == calculateMethod) + 1;
+            var instructionsToInsert = new List<CodeInstruction>();
+            instructionsToInsert.Add(new CodeInstruction(OpCodes.Ldloc_0));
+            instructionsToInsert.Add(new CodeInstruction(OpCodes.Ldarg_1));
+            var chassisMethod = AccessTools.Method(typeof(MechDef), "get_Chassis");
+            instructionsToInsert.Add(new CodeInstruction(OpCodes.Callvirt, chassisMethod));
+            var tonnageMethod = AccessTools.Method(typeof(ChassisDef), "get_Tonnage");
+            instructionsToInsert.Add(new CodeInstruction(OpCodes.Callvirt, tonnageMethod));
+            var comparisonMethod = AccessTools.Method(typeof(Calculator), "SameTonnageWithEpsilon",
+                new Type[] {typeof(float), typeof(float)});
+            instructionsToInsert.Add(new CodeInstruction(OpCodes.Call, comparisonMethod));
+            var returnIndex = instructionList.FindIndex(instruction => instruction.opcode == OpCodes.Ret);
+            instructionsToInsert.Add(new CodeInstruction(OpCodes.Brtrue, instructionList[returnIndex].labels[0]));
+            instructionList.InsertRange(insertionIndex, instructionsToInsert);
+            return instructionList;
         }
     }
 }

@@ -47,6 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Calculator.cs" />
     <Compile Include="ValidateMechTonnage_Patch.cs" />
     <Compile Include="Core.cs" />
     <Compile Include="Logger.cs" />
