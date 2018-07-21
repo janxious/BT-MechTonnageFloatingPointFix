@@ -1,0 +1,20 @@
+﻿{
+  "Name": "MechTonnageFloatingPointFixer",
+  "Enabled": true,
+
+  "Version": "0.0.1",
+
+  "Author": "janxious",
+  "Website": "https://github.com/janxious/MechTonnageFloatingPointFixer",
+
+  "DLL": "MechTonnageFloatingPointFixer.dll",
+  "DLLEntryPoint": "MechTonnageFloatingPointFixer.Core.Init",
+  "DependsOn": [],
+  "ConflictsWith": [],
+
+  "Settings": {
+    "epsilon": 0.0001,
+
+    "debug": false
+  }
+}
