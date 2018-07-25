@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 using BattleTech;
 using Harmony;
 
@@ -16,9 +14,7 @@ namespace MechTonnageFloatingPointFixer
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var instructionList = instructions.ToList();
-            var calculateMethod =
-                AccessTools.Method(typeof(MechStatisticsRules),
-                    "CalculateTonnage"); //, new Type[] {typeof(MechDef), typeof(float), typeof(float)});
+            var calculateMethod = AccessTools.Method(typeof(MechStatisticsRules), "CalculateTonnage");
             var insertionIndex = instructionList.FindIndex(instruction =>
                                      instruction.opcode == OpCodes.Call && instruction.operand == calculateMethod) + 1;
             var instructionsToInsert = new List<CodeInstruction>();

@@ -26,6 +26,7 @@ namespace MechTonnageFloatingPointFixer
         ModSettings = new Settings();
       }
 
+      HarmonyInstance.DEBUG = ModSettings.debug;
       var harmony = HarmonyInstance.Create(ModId);
       harmony.PatchAll(Assembly.GetExecutingAssembly());
     }
